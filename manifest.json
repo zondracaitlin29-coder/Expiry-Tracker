@@ -1,0 +1,12 @@
+{
+  "name": "Expiry Date Tracker",
+  "short_name": "Expiry Tracker",
+  "description": "Track product expiry dates efficiently",
+  "start_url": "/Smart-Expiry-Date-Tracker/",
+  "scope": "/Smart-Expiry-Date-Tracker/",
+  "display": "standalone",
+  "orientation": "portrait",
+  "background_color": "#f5f5f5",
+  "theme_color": "#001F3F",
+  "icons": []
+}

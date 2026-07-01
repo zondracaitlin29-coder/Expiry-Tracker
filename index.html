@@ -1,0 +1,1429 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <meta name="description" content="Track product expiry dates efficiently">
+    <meta name="theme-color" content="#001F3F">
+    <meta name="apple-mobile-web-app-capable" content="yes">
+    <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+    <meta name="apple-mobile-web-app-title" content="Expiry Tracker">
+    <link rel="manifest" href="./manifest.json">
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+
+        body {
+            font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Oxygen, Ubuntu, Cantarell, sans-serif;
+            background-color: #f5f5f5;
+            overflow-x: hidden;
+        }
+
+        header {
+            background-color: #001F3F;
+            color: white;
+            padding: 0.85rem 1rem;
+            position: sticky;
+            top: 0;
+            z-index: 100;
+            box-shadow: 0 2px 8px rgba(0, 31, 63, 0.15);
+        }
+
+        header h1 {
+            font-size: 1.3rem;
+            margin-bottom: 0.75rem;
+            font-weight: 600;
+            text-align: center;
+            font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Oxygen, Ubuntu, Cantarell, sans-serif;
+        }
+
+        .header-stats {
+            display: grid;
+            grid-template-columns: 1fr 1fr 1fr;
+            gap: 0.6rem;
+            font-size: 1rem;
+            opacity: 0.95;
+            padding: 0;
+        }
+
+        .stat-item {
+            display: flex;
+            flex-direction: column;
+            gap: 0.3rem;
+            align-items: center;
+            text-align: center;
+            padding: 0.5rem 0.4rem;
+            border-radius: 10px;
+            background-color: rgba(255, 255, 255, 0.1);
+        }
+
+        .stat-label {
+            font-size: 0.7rem;
+            opacity: 0.85;
+            font-weight: 500;
+            line-height: 1;
+        }
+
+        .stat-value {
+            font-size: 1.5rem;
+            font-weight: 700;
+            font-family: 'Courier New', monospace;
+            letter-spacing: 0.05em;
+            min-width: 2.5rem;
+        }
+
+        #expiringCount {
+            color: #ffcdd2;
+        }
+
+        #totalCount {
+            color: #ffffff;
+        }
+
+        #processedCount {
+            color: #c8e6c9;
+        }
+
+        /* Search Bar */
+        .search-container {
+            margin-top: 1rem;
+            margin-bottom: 1rem;
+            padding: 0 1rem;
+        }
+
+        .search-bar {
+            width: 100%;
+            padding: 0.75rem 1rem;
+            border: 2px solid #e0e0e0;
+            border-radius: 20px;
+            font-size: 1rem;
+            background-color: #fff;
+            transition: border-color 0.3s ease;
+        }
+
+        .search-bar:focus {
+            outline: none;
+            border-color: #001F3F;
+        }
+
+        /* Navigation Tabs */
+        .nav-tabs {
+            display: flex;
+            gap: 0.75rem;
+            padding: 1rem;
+            background-color: #f9f9f9;
+        }
+
+        .tab-btn {
+            flex: 1;
+            padding: 0.75rem;
+            border: none;
+            background-color: #001F3F;
+            color: white;
+            font-size: 0.9rem;
+            font-weight: 600;
+            cursor: pointer;
+            border-radius: 16px;
+            transition: all 0.3s ease;
+        }
+
+        .tab-btn.inactive {
+            background-color: #e8e8e8;
+            color: #333;
+        }
+
+        .tab-btn:active {
+            transform: scale(0.98);
+        }
+
+        /* Add Product Button */
+        .add-btn {
+            position: fixed;
+            bottom: 1rem;
+            right: 1rem;
+            width: 60px;
+            height: 60px;
+            border-radius: 50%;
+            background-color: #001F3F;
+            color: white;
+            border: none;
+            font-size: 1.5rem;
+            cursor: pointer;
+            box-shadow: 0 4px 12px rgba(0, 31, 63, 0.3);
+            z-index: 50;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-weight: bold;
+            transition: all 0.3s ease;
+        }
+
+        .add-btn:active {
+            transform: scale(0.95);
+        }
+
+        /* Product List */
+        .product-list {
+            list-style: none;
+            padding: 1rem;
+        }
+
+        .product-item {
+            display: flex;
+            align-items: flex-start;
+            gap: 0.75rem;
+            padding: 1rem;
+            background-color: #fff;
+            border: 1px solid #e8e8e8;
+            border-radius: 16px;
+            margin-bottom: 0.75rem;
+            transition: all 0.3s ease;
+        }
+
+        .product-item.expiring-soon {
+            background-color: #ffebee;
+            border-color: #d32f2f;
+        }
+
+        .product-item input[type="checkbox"] {
+            width: 20px;
+            height: 20px;
+            margin-top: 0.25rem;
+            cursor: pointer;
+            accent-color: #d32f2f;
+            flex-shrink: 0;
+            border-radius: 6px;
+        }
+
+        .product-item input[type="checkbox"]:checked {
+            accent-color: #001F3F;
+        }
+
+        .product-content {
+            flex: 1;
+            min-width: 0;
+            display: flex;
+            justify-content: space-between;
+            align-items: flex-start;
+            gap: 0.75rem;
+        }
+
+        .product-info {
+            flex: 1;
+            min-width: 0;
+        }
+
+        .product-name {
+            font-weight: 600;
+            margin-bottom: 0.25rem;
+            font-size: 0.95rem;
+            word-break: break-word;
+        }
+
+        .product-quantity {
+            font-size: 0.85rem;
+            color: #666;
+            margin-bottom: 0.25rem;
+        }
+
+        .expiry-dates {
+            font-size: 0.85rem;
+            color: #666;
+            margin-bottom: 0.5rem;
+        }
+
+        .days-until {
+            font-weight: 600;
+            font-size: 0.9rem;
+        }
+
+        .days-critical {
+            color: #d32f2f;
+        }
+
+        .days-normal {
+            color: #001F3F;
+        }
+
+        .edit-btn {
+            background: none;
+            border: none;
+            color: #001F3F;
+            font-size: 1.2rem;
+            cursor: pointer;
+            padding: 0.25rem;
+            flex-shrink: 0;
+            transition: transform 0.2s ease;
+        }
+
+        .edit-btn:active {
+            transform: scale(0.9);
+        }
+
+        .empty-state {
+            text-align: center;
+            padding: 2rem 1rem;
+            color: #999;
+        }
+
+        .empty-state-icon {
+            font-size: 3rem;
+            margin-bottom: 1rem;
+            opacity: 0.6;
+        }
+
+        /* Processed Items */
+        .processed-item {
+            padding: 1rem;
+            background-color: #fff;
+            border: 1px solid #e8e8e8;
+            border-radius: 16px;
+            margin-bottom: 0.75rem;
+        }
+
+        .processed-item-header {
+            margin-bottom: 1rem;
+            padding-bottom: 0.75rem;
+            border-bottom: 1px solid #e8e8e8;
+        }
+
+        .processed-item-title {
+            font-weight: 600;
+            font-size: 0.95rem;
+            margin-bottom: 0.25rem;
+        }
+
+        .processed-item-meta {
+            font-size: 0.8rem;
+            color: #666;
+            display: grid;
+            grid-template-columns: 1fr 1fr;
+            gap: 0.5rem;
+        }
+
+        .processed-item-fields {
+            display: flex;
+            flex-direction: column;
+            gap: 0.75rem;
+        }
+
+        .processed-field {
+            display: flex;
+            flex-direction: column;
+            gap: 0.35rem;
+        }
+
+        .processed-field label {
+            font-size: 0.8rem;
+            font-weight: 600;
+            color: #333;
+        }
+
+        .processed-field select,
+        .processed-field textarea {
+            padding: 0.5rem 0.75rem;
+            border: 1px solid #e0e0e0;
+            border-radius: 8px;
+            font-size: 0.9rem;
+            font-family: inherit;
+            transition: border-color 0.3s ease;
+        }
+
+        .processed-field select:focus,
+        .processed-field textarea:focus {
+            outline: none;
+            border-color: #001F3F;
+        }
+
+        .processed-field textarea {
+            resize: vertical;
+            min-height: 60px;
+        }
+
+        /* Modal */
+        .modal {
+            display: none;
+            position: fixed;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            background-color: rgba(0, 0, 0, 0.5);
+            z-index: 200;
+            align-items: center;
+            justify-content: center;
+            padding: 1rem;
+        }
+
+        .modal.active {
+            display: flex;
+        }
+
+        .modal-content {
+            background-color: white;
+            padding: 1.5rem;
+            border-radius: 24px;
+            width: 100%;
+            max-width: 500px;
+            max-height: 90vh;
+            overflow-y: auto;
+            box-shadow: 0 8px 32px rgba(0, 0, 0, 0.2);
+        }
+
+        .modal-header {
+            font-size: 1.25rem;
+            font-weight: 600;
+            margin-bottom: 1.5rem;
+            color: #001F3F;
+        }
+
+        .form-group {
+            margin-bottom: 1.25rem;
+        }
+
+        .form-group label {
+            display: block;
+            font-weight: 600;
+            margin-bottom: 0.5rem;
+            font-size: 0.95rem;
+            color: #333;
+        }
+
+        .form-group input,
+        .form-group textarea {
+            width: 100%;
+            padding: 0.75rem 1rem;
+            border: 2px solid #e0e0e0;
+            border-radius: 12px;
+            font-size: 1rem;
+            font-family: inherit;
+            transition: border-color 0.3s ease;
+        }
+
+        .form-group input:focus,
+        .form-group textarea:focus {
+            outline: none;
+            border-color: #001F3F;
+        }
+
+        .form-group textarea {
+            resize: vertical;
+            min-height: 80px;
+        }
+
+        .date-list {
+            background-color: #f9f9f9;
+            border-radius: 12px;
+            padding: 1rem;
+            margin-bottom: 1rem;
+        }
+
+        .date-item {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            padding: 0.75rem;
+            background-color: white;
+            border-radius: 8px;
+            margin-bottom: 0.5rem;
+            border: 1px solid #e8e8e8;
+        }
+
+        .date-item:last-child {
+            margin-bottom: 0;
+        }
+
+        .remove-date-btn {
+            background: none;
+            border: none;
+            color: #d32f2f;
+            font-size: 1.2rem;
+            cursor: pointer;
+            padding: 0.25rem;
+            transition: transform 0.2s ease;
+        }
+
+        .remove-date-btn:active {
+            transform: scale(0.9);
+        }
+
+        .add-date-btn {
+            background-color: #f0f0f0;
+            border: 2px dashed #001F3F;
+            color: #001F3F;
+            padding: 0.75rem 1rem;
+            border-radius: 12px;
+            width: 100%;
+            font-weight: 600;
+            cursor: pointer;
+            transition: all 0.3s ease;
+            margin-bottom: 1rem;
+        }
+
+        .add-date-btn:active {
+            transform: scale(0.98);
+        }
+
+        .form-actions {
+            display: flex;
+            gap: 0.75rem;
+            margin-top: 1.5rem;
+        }
+
+        .btn {
+            flex: 1;
+            padding: 0.75rem 1rem;
+            border: none;
+            border-radius: 12px;
+            font-size: 0.95rem;
+            font-weight: 600;
+            cursor: pointer;
+            transition: all 0.3s ease;
+        }
+
+        .btn-primary {
+            background-color: #001F3F;
+            color: white;
+        }
+
+        .btn-primary:active {
+            transform: scale(0.98);
+        }
+
+        .btn-secondary {
+            background-color: #e8e8e8;
+            color: #333;
+        }
+
+        .btn-secondary:active {
+            transform: scale(0.98);
+        }
+
+        .btn-danger {
+            background-color: #d32f2f;
+            color: white;
+        }
+
+        .btn-danger:active {
+            transform: scale(0.98);
+        }
+
+        @media (max-width: 480px) {
+            header h1 {
+                font-size: 1.25rem;
+            }
+
+            .modal-content {
+                padding: 1.25rem;
+            }
+
+            .form-group input,
+            .form-group textarea {
+                padding: 0.65rem 0.85rem;
+            }
+        }
+    </style>
+</head>
+<body>
+    <!-- Header -->
+    <header>
+        <h1 id="headerTitle" style="position: relative; display: inline-block; width: 100%; text-align: center;"></h1>
+        <div class="header-stats">
+            <div class="stat-item">
+                <span class="stat-label">Expiring Soon</span>
+                <span id="expiringCount" class="stat-value">0</span>
+            </div>
+            <div class="stat-item">
+                <span class="stat-label">Total Items</span>
+                <span id="totalCount" class="stat-value">0</span>
+            </div>
+            <div class="stat-item">
+                <span class="stat-label">Processed</span>
+                <span id="processedCount" class="stat-value">0</span>
+            </div>
+        </div>
+    </header>
+
+    <!-- Search -->
+    <div class="search-container">
+        <input 
+            type="text" 
+            id="searchInput" 
+            class="search-bar" 
+            placeholder="Search products..."
+            autocomplete="off"
+        >
+    </div>
+
+    <!-- Tabs -->
+    <div class="nav-tabs">
+        <button id="expiringTab" class="tab-btn">Expiring Soon</button>
+        <button id="allTab" class="tab-btn inactive">All Products</button>
+        <button id="processedTab" class="tab-btn inactive">Processed Items</button>
+    </div>
+
+    <!-- Product List -->
+    <ul id="productList" class="product-list"></ul>
+
+    <!-- Processed Items List -->
+    <div id="processedList" style="padding: 1rem;"></div>
+
+    <!-- Empty State -->
+    <div id="emptyState" class="empty-state" style="display: none;">
+        <div class="empty-state-icon">📦</div>
+        <p id="emptyMessage">No products to display</p>
+    </div>
+
+    <!-- Add Product Modal -->
+    <div id="addModal" class="modal">
+        <div class="modal-content">
+            <div class="modal-header">Add New Product</div>
+            <form id="addForm">
+                <div class="form-group">
+                    <label for="productName">Product Name *</label>
+                    <input type="text" id="productName" placeholder="e.g., Tomato Sauce" required>
+                </div>
+                <div class="form-group">
+                    <label for="productQuantity">Quantity *</label>
+                    <input type="text" id="productQuantity" placeholder="e.g., 500ml" required>
+                </div>
+                <div class="form-group">
+                    <label>Expiry Dates *</label>
+                    <div id="datesList" class="date-list"></div>
+                    <button type="button" class="add-date-btn" id="addDateBtn">+ Add Date</button>
+                    <input type="date" id="expiryDate" style="display: none;">
+                </div>
+                <div class="form-actions">
+                    <button type="submit" class="btn btn-primary">Add Product</button>
+                    <button type="button" id="cancelBtn" class="btn btn-secondary">Cancel</button>
+                </div>
+            </form>
+        </div>
+    </div>
+
+    <!-- Edit Product Modal -->
+    <div id="editModal" class="modal">
+        <div class="modal-content">
+            <div class="modal-header">Edit Product</div>
+            <form id="editForm">
+                <div class="form-group">
+                    <label for="editProductName">Product Name *</label>
+                    <input type="text" id="editProductName" placeholder="e.g., Tomato Sauce">
+                </div>
+                <div class="form-group">
+                    <label for="editProductQuantity">Quantity *</label>
+                    <input type="text" id="editProductQuantity" placeholder="e.g., 500ml">
+                </div>
+                <div class="form-group">
+                    <label>Expiry Dates *</label>
+                    <div id="editDatesList" class="date-list"></div>
+                    <button type="button" class="add-date-btn" id="editAddDateBtn">+ Add Date</button>
+                    <input type="date" id="editExpiryDate" style="display: none;">
+                </div>
+                <div class="form-actions">
+                    <button type="submit" class="btn btn-primary">Save Changes</button>
+                    <button type="button" id="editCancelBtn" class="btn btn-secondary">Cancel</button>
+                    <button type="button" id="editDeleteBtn" class="btn btn-danger">Delete</button>
+                </div>
+            </form>
+        </div>
+    </div>
+
+    <!-- Add Product Button -->
+    <button id="addBtn" class="add-btn" aria-label="Add new product">+</button>
+
+    <!-- Service Worker Registration -->
+    <script>
+        if ('serviceWorker' in navigator) {
+            window.addEventListener('load', () => {
+                navigator.serviceWorker.register('./service-worker.js');
+            });
+        }
+    </script>
+
+    <!-- Application Logic -->
+    <script>
+        const app = {
+            products: [],
+            processedItems: [],
+            currentView: 'expiring',
+            searchQuery: '',
+            editingProductId: null,
+            tempDates: [],
+            editTempDates: [],
+
+            init() {
+                this.loadProducts();
+                this.loadProcessedItems();
+                this.setupHeader();
+                this.updateStats();
+                this.render();
+                this.attachEventListeners();
+            },
+
+            setupHeader() {
+                const today = new Date();
+                const dayNum = today.getDate();
+                const calendarIcon = `<svg width="1.4em" height="1.4em" viewBox="0 0 32 32" fill="none" xmlns="http://www.w3.org/2000/svg" style="display: inline-block; vertical-align: -0.15em; margin-right: 0.35rem;">
+                    <rect x="3" y="6" width="26" height="24" rx="2" stroke="white" stroke-width="1.5" fill="none"/>
+                    <line x1="3" y1="13" x2="29" y2="13" stroke="white" stroke-width="1.5"/>
+                    <line x1="9" y1="2" x2="9" y2="10" stroke="white" stroke-width="1.5" stroke-linecap="round"/>
+                    <line x1="23" y1="2" x2="23" y2="10" stroke="white" stroke-width="1.5" stroke-linecap="round"/>
+                    <text x="16" y="22" text-anchor="middle" fill="white" font-size="10" font-weight="bold" font-family="system-ui, sans-serif">${dayNum}</text>
+                </svg>`;
+                const title = `${calendarIcon}Expiry Date Tracker`;
+                document.getElementById('headerTitle').innerHTML = title;
+            },
+
+            loadProducts() {
+                const saved = localStorage.getItem('products');
+                if (saved) {
+                    try {
+                        this.products = JSON.parse(saved);
+                    } catch {
+                        this.products = this.getDefaultProducts();
+                    }
+                } else {
+                    this.products = this.getDefaultProducts();
+                }
+                this.sortProductsAlphabetically();
+            },
+
+            saveProducts() {
+                localStorage.setItem('products', JSON.stringify(this.products));
+            },
+
+            loadProcessedItems() {
+                const saved = localStorage.getItem('processedItems');
+                if (saved) {
+                    try {
+                        this.processedItems = JSON.parse(saved);
+                    } catch {
+                        this.processedItems = [];
+                    }
+                } else {
+                    this.processedItems = [];
+                }
+            },
+
+            saveProcessedItems() {
+                localStorage.setItem('processedItems', JSON.stringify(this.processedItems));
+            },
+
+            getDefaultProducts() {
+                return [
+                    { id: 1, name: 'First Choice Milki Vanilla', quantity: '250ml', dates: ['2026-08-26'], removed: false },
+                    { id: 2, name: 'First Choice Milki Chocolate', quantity: '250ml', dates: ['2026-12-12'], removed: false },
+                    { id: 3, name: 'First Choice Milki Strawberry', quantity: '200ml', dates: ['2026-09-27'], removed: false },
+                    { id: 4, name: 'First Choice Milki Banana', quantity: '200ml', dates: ['2026-10-28'], removed: false },
+                    { id: 5, name: 'First Choice Milki Cream Soda', quantity: '200ml', dates: ['2026-09-26'], removed: false },
+                    { id: 6, name: 'First Choice Power Cup Strawberry', quantity: '150ml', dates: ['2026-07-29'], removed: false },
+                    { id: 7, name: 'First Choice Power Cup Coconut', quantity: '150ml', dates: ['2026-09-23'], removed: false },
+                    { id: 8, name: 'First Choice High Protein Balance', quantity: '15g', dates: ['2026-11-02', '2026-11-03'], removed: false },
+                    { id: 9, name: 'First Choice High Protein Recovery', quantity: '21g', dates: ['2026-11-15', '2027-01-17', '2026-12-02', '2026-07-16', '2026-11-03', '2027-01-18', '2026-12-13'], removed: false },
+                    { id: 10, name: 'Act II Salted', quantity: '3x85g', dates: ['2026-10-06', '2026-09-08'], removed: false },
+                    { id: 11, name: 'Act II Butter', quantity: '3x85g', dates: ['2026-11-19'], removed: false },
+                    { id: 12, name: 'Act II Sweet & Salty', quantity: '3x85g', dates: ['2026-12-10'], removed: false },
+                    { id: 13, name: 'Act II Butter Lovers', quantity: '3x85g', dates: ['2027-01-06'], removed: false },
+                    { id: 14, name: 'Act II Light Butter', quantity: '85g', dates: ['2026-09-08'], removed: false },
+                    { id: 15, name: 'Act II Butter', quantity: '85g', dates: ['2027-01-07'], removed: false },
+                    { id: 16, name: 'Act II Sweet & Salty', quantity: '85g', dates: ['2026-01-06'], removed: false },
+                    { id: 17, name: 'Henties Le Fountain Apple', quantity: '350ml', dates: ['2026-07-10'], removed: false },
+                    { id: 18, name: 'Henties Le Fountain Cranberry', quantity: '350ml', dates: ['2026-08-06'], removed: false },
+                    { id: 19, name: 'Golden Crest Chilli Infused Honey', quantity: '225ml', dates: ['2026-09-09'], removed: false },
+                    { id: 20, name: 'Denny Durban Curry Sauce', quantity: '415g', dates: ['2026-12-30', '2026-10-16'], removed: false },
+                    { id: 21, name: 'Denny Bobotie Curry Sauce', quantity: '415g', dates: ['2026-12-11'], removed: false },
+                    { id: 22, name: 'Denny Honey and Mustard CIS', quantity: '415g', dates: ['2026-10-29'], removed: false },
+                    { id: 23, name: 'Denny Tomato and Basil Pasta Sauce', quantity: '400g', dates: ['2026-08-06'], removed: false },
+                    { id: 24, name: 'Denny Bolognaise Pasta Sauce', quantity: '400g', dates: ['2027-01-04', '2026-09-11'], removed: false },
+                    { id: 25, name: 'Denny Creamy Mushroom POS', quantity: '200g', dates: ['2026-12-11'], removed: false },
+                    { id: 26, name: 'Denny Mushroom and Cheese POS', quantity: '200g', dates: ['2027-01-30'], removed: false },
+                    { id: 27, name: 'Denny Creamy Tomato RTS Soup', quantity: '400g', dates: ['2026-10-07'], removed: false },
+                    { id: 28, name: 'Denny Chunky Vegetable RTS Soup', quantity: '400g', dates: ['2026-12-04'], removed: false },
+                    { id: 29, name: 'Denny Bolognaise Mushroom Pasta Sauce', quantity: '400g', dates: ['2027-01-06'], removed: false },
+                    { id: 30, name: 'Denny Sundried Tomato and Herb Pasta Sauce', quantity: '400g', dates: ['2026-12-05'], removed: false },
+                    { id: 31, name: 'Minnies Mozambique Garlic & Lemon Sauce', quantity: '250ml', dates: ['2026-11-22'], removed: false },
+                    { id: 32, name: 'Minnies Prego Sauce', quantity: '250ml', dates: ['2026-11-28'], removed: false },
+                    { id: 33, name: 'Minnies Mozambique Mild Peri Peri Sauce', quantity: '250ml', dates: ['2026-09-25'], removed: false },
+                    { id: 34, name: 'Jan Braai Classic Chicken Potjie Sauce', quantity: '400g', dates: ['2027-01-15'], removed: false },
+                    { id: 35, name: 'Jan Braai Classic Oxtail Sauce', quantity: '400g', dates: ['2026-09-20'], removed: false },
+                    { id: 36, name: 'Jan Braai Garlic & Herb Braai Salt', quantity: '230g', dates: ['2026-09-16'], removed: false },
+                    { id: 37, name: 'Jan Braai Curry Sosotie Basting Sauce', quantity: '375ml', dates: ['2026-09-24'], removed: false },
+                    { id: 38, name: 'Maille Honey Mustard', quantity: '230g', dates: ['2027-01-24'], removed: false },
+                    { id: 39, name: 'Maille Original Dijon Mustard', quantity: '230g', dates: ['2026-09-26'], removed: false },
+                    { id: 40, name: 'Maille Dijonnaise Sauce', quantity: '185g', dates: ['2026-11-28'], removed: false },
+                    { id: 41, name: 'Maille Tartare Sauce', quantity: '185g', dates: ['2026-08-01'], removed: false },
+                    { id: 42, name: 'Maille Hollandaise Sauce', quantity: '185g', dates: ['2026-11-27'], removed: false },
+                    { id: 43, name: 'Robertsons Caramel Essence', quantity: '40ml', dates: ['2027-01-07', '2026-12-12'], removed: false },
+                    { id: 44, name: 'Tabasco Habanero', quantity: '60ml', dates: ['2026-10-15'], removed: false },
+                    { id: 45, name: 'Tabasco Garlic', quantity: '60ml', dates: ['2026-09-03'], removed: false },
+                    { id: 46, name: 'Tabasco Zesty Garlic', quantity: '60ml', dates: ['2027-01-08'], removed: false },
+                    { id: 47, name: 'Tabasco Buffalo Style', quantity: '60ml', dates: ['2026-09-10'], removed: false },
+                    { id: 48, name: 'Tabasco Sweet & Spicy Sauce', quantity: '256ml', dates: ['2026-09-13'], removed: false },
+                    { id: 49, name: 'Cani Buttermilk Rusks', quantity: '1kg', dates: ['2026-10-20'], removed: false },
+                    { id: 50, name: 'Cani Coconut Rusks', quantity: '450g', dates: ['2026-12-01'], removed: false },
+                    { id: 51, name: 'Cani Fruit & Nut Rusks', quantity: '450g', dates: ['2026-12-02'], removed: false },
+                    { id: 52, name: 'Cani Buttermilk Rusks', quantity: '500g', dates: ['2026-10-12', '2026-07-08'], removed: false },
+                    { id: 53, name: 'Cani Sugar Free Muesli Rusks', quantity: '500g', dates: ['2026-10-12'], removed: false },
+                    { id: 54, name: 'Cani Bran, Seed and Raisin Rusks', quantity: '500g', dates: ['2026-10-12', '2026-11-02'], removed: false },
+                    { id: 55, name: 'Kikkoman Soy Sauce', quantity: '250ml', dates: ['2026-11-09'], removed: false },
+                    { id: 56, name: 'Kikkoman Soy Sauce', quantity: '500ml', dates: ['2026-10-25'], removed: false },
+                    { id: 57, name: 'Kikkoman Soy Sauce', quantity: '480ml', dates: ['2026-10-25'], removed: false },
+                    { id: 58, name: 'All Joy Tomato Sauce', quantity: '2l', dates: ['2026-10-19'], removed: false },
+                    { id: 59, name: 'All Joy Big Red Tomato Sauce', quantity: '500ml', dates: ['2026-11-04'], removed: false },
+                    { id: 60, name: 'Dursots Rich & Creamy Mayonnaise', quantity: '750g', dates: ['2026-11-11'], removed: false },
+                    { id: 61, name: 'Dursots Crunchy Peanut Butter', quantity: '400g', dates: ['2026-09-17'], removed: false },
+                    { id: 62, name: 'Cape Herb & Spice Veggie Seasoning', quantity: '60g', dates: ['2026-08-01'], removed: false },
+                    { id: 63, name: 'Safari White Malt Vinegar', quantity: '750ml', dates: ['2026-10-11'], removed: false },
+                    { id: 64, name: 'Safari Balsamic Glaze', quantity: '150ml', dates: ['2026-11-20'], removed: false },
+                    { id: 65, name: 'First Choice Full Cream Cheddar Cheese', quantity: '400g', dates: ['2026-11-23'], removed: false },
+                    { id: 66, name: 'First Choice Full Cream Gouda Cheese', quantity: '400g', dates: ['2026-11-08'], removed: false },
+                    { id: 67, name: 'First Choice Full Cream Gouda Cheese', quantity: '200g', dates: ['2026-11-08'], removed: false },
+                    { id: 68, name: 'First Choice Full Cream Cheddar Cheese', quantity: '200g', dates: ['2026-12-13'], removed: false },
+                    { id: 69, name: 'Henties Mango Juice', quantity: '1.5l', dates: ['2026-07-14', '2026-07-29'], removed: false },
+                    { id: 70, name: 'Henties 7 Fruits Juice', quantity: '1.5l', dates: ['2026-08-27'], removed: false },
+                    { id: 71, name: 'Henties Apple Juice', quantity: '3l', dates: ['2026-09-12'], removed: false },
+                    { id: 72, name: 'Henties Mango Juice', quantity: '3l', dates: ['2026-08-06'], removed: false },
+                    { id: 73, name: 'Henties Mango & Orange Juice', quantity: '1.5l', dates: ['2026-07-28', '2026-08-26'], removed: false },
+                    { id: 74, name: 'Henties Medley Of Fruit Juice', quantity: '3l', dates: ['2026-08-22'], removed: false },
+                    { id: 75, name: 'Henties Apple Juice', quantity: '350ml', dates: ['2026-09-11', '2026-08-26'], removed: false },
+                    { id: 76, name: 'Henties Mango & Orange Juice', quantity: '350ml', dates: ['2026-08-27', '2026-08-18'], removed: false },
+                    { id: 77, name: 'Henties Guava Juice', quantity: '3l', dates: ['2026-09-17'], removed: false },
+                    { id: 78, name: 'Henties Orange Juice', quantity: '350ml', dates: ['2026-08-28'], removed: false },
+                    { id: 79, name: 'Henties Le Fountain Strawberry', quantity: '350ml', dates: ['2026-07-14'], removed: false },
+                    { id: 80, name: 'Henties 7 Fruits Juice', quantity: '350ml', dates: ['2026-09-05'], removed: false },
+                    { id: 81, name: 'Henties Strawberry Delight Smoothie', quantity: '350ml', dates: ['2026-07-10'], removed: false },
+                    { id: 82, name: 'Henties Mango Magic Smoothie', quantity: '350ml', dates: ['2026-07-03'], removed: false },
+                    { id: 83, name: 'Henties Berry Blast Smoothie', quantity: '350ml', dates: ['2026-07-25'], removed: false },
+                    { id: 84, name: 'Henties Guava Juice', quantity: '1.5l', dates: ['2026-08-11'], removed: false },
+                    { id: 85, name: 'Henties 7 Fruits Juice', quantity: '3l', dates: ['2026-09-11'], removed: false }
+                ];
+            },
+
+            
+            getDaysUntilExpiry(dateString) {
+                const today = new Date();
+                today.setHours(0, 0, 0, 0);
+                const expiryDate = new Date(dateString);
+                expiryDate.setHours(0, 0, 0, 0);
+                const timeDiff = expiryDate - today;
+                return Math.ceil(timeDiff / (1000 * 3600 * 24));
+            },
+
+            getEarliestDate(dates) {
+                return dates.reduce((earliest, current) => {
+                    return new Date(current) < new Date(earliest) ? current : earliest;
+                });
+            },
+
+            isExpiringCritical(daysUntil) {
+                return daysUntil <= 15;
+            },
+
+            sortProductsAlphabetically() {
+                this.products.sort((a, b) => {
+                    if (a.removed === b.removed) {
+                        return a.name.localeCompare(b.name, undefined, { sensitivity: 'base' });
+                    }
+                    return a.removed ? 1 : -1;
+                });
+            },
+
+            getFilteredProducts() {
+                let filtered = this.products.filter(p => !p.removed);
+
+                if (this.currentView === 'expiring') {
+                    filtered = filtered.filter(p => {
+                        const daysUntil = this.getDaysUntilExpiry(this.getEarliestDate(p.dates));
+                        return this.isExpiringCritical(daysUntil);
+                    });
+                }
+
+                if (this.searchQuery.trim()) {
+                    filtered = filtered.filter(p => 
+                        p.name.toLowerCase().includes(this.searchQuery.toLowerCase())
+                    );
+                }
+
+                return filtered;
+            },
+
+            getFilteredProcessedItems() {
+                let filtered = this.processedItems;
+
+                if (this.searchQuery.trim()) {
+                    filtered = filtered.filter(item => 
+                        item.name.toLowerCase().includes(this.searchQuery.toLowerCase())
+                    );
+                }
+
+                return filtered;
+            },
+
+            formatDate(dateString) {
+                const date = new Date(dateString);
+                return new Intl.DateTimeFormat('en-ZA', { 
+                    day: '2-digit', 
+                    month: '2-digit', 
+                    year: 'numeric' 
+                }).format(date);
+            },
+
+            formatDateShort(dateString) {
+                const date = new Date(dateString);
+                return new Intl.DateTimeFormat('en-ZA', { 
+                    day: '2-digit', 
+                    month: '2-digit', 
+                    year: '2-digit' 
+                }).format(date);
+            },
+
+            render() {
+                const list = document.getElementById('productList');
+                const processedList = document.getElementById('processedList');
+                const emptyState = document.getElementById('emptyState');
+
+                if (this.currentView === 'processed') {
+                    list.style.display = 'none';
+                    processedList.style.display = 'block';
+                    this.renderProcessedItems();
+                } else {
+                    processedList.style.display = 'none';
+                    list.style.display = 'block';
+                    
+                    const filtered = this.getFilteredProducts();
+
+                    list.innerHTML = '';
+
+                    if (filtered.length === 0) {
+                        list.style.display = 'none';
+                        emptyState.style.display = 'block';
+                        document.getElementById('emptyMessage').textContent = 
+                            this.currentView === 'expiring' 
+                                ? 'No products expiring soon' 
+                                : 'No products found';
+                        return;
+                    }
+
+                    list.style.display = 'block';
+                    emptyState.style.display = 'none';
+
+                    filtered.forEach(product => {
+                        const earliestDate = this.getEarliestDate(product.dates);
+                        const daysUntil = this.getDaysUntilExpiry(earliestDate);
+                        const isCritical = this.isExpiringCritical(daysUntil);
+
+                        const li = document.createElement('li');
+                        li.className = `product-item ${isCritical ? 'expiring-soon' : ''}`;
+
+                        const daysClass = isCritical ? 'days-critical' : 'days-normal';
+                        const daysText = daysUntil <= 0 ? 'EXPIRED' : `${daysUntil} days`;
+
+                        const checkboxHTML = this.currentView === 'expiring' ? `
+                            <input 
+                                type="checkbox" 
+                                class="remove-checkbox"
+                                data-id="${product.id}"
+                                data-date="${earliestDate}"
+                                aria-label="Mark as processed"
+                            >
+                        ` : '';
+
+                        li.innerHTML = `
+                            ${checkboxHTML}
+                            <div class="product-content">
+                                <div class="product-info">
+                                    <div class="product-name">${product.name}</div>
+                                    <div class="product-quantity">${product.quantity}</div>
+                                    <div class="expiry-dates">${this.formatDate(earliestDate)}</div>
+                                    <div class="days-until ${daysClass}">📅 ${daysText}</div>
+                                </div>
+                                ${this.currentView === 'all' ? `<button class="edit-btn" data-id="${product.id}" aria-label="Edit product">✏️</button>` : ''}
+                            </div>
+                        `;
+
+                        list.appendChild(li);
+                    });
+
+                    this.attachCheckboxListeners();
+                    if (this.currentView === 'all') {
+                        this.attachEditButtonListeners();
+                    }
+                }
+            },
+
+            renderProcessedItems() {
+                const container = document.getElementById('processedList');
+                const emptyState = document.getElementById('emptyState');
+                const filtered = this.getFilteredProcessedItems();
+
+                container.innerHTML = '';
+
+                if (filtered.length === 0) {
+                    container.style.display = 'none';
+                    emptyState.style.display = 'block';
+                    document.getElementById('emptyMessage').textContent = 'No processed items';
+                    return;
+                }
+
+                container.style.display = 'block';
+                emptyState.style.display = 'none';
+
+                filtered.forEach(item => {
+                    const itemDiv = document.createElement('div');
+                    itemDiv.className = 'processed-item';
+                    itemDiv.innerHTML = `
+                        <div class="processed-item-header">
+                            <div class="processed-item-title">${item.name}</div>
+                            <div class="processed-item-meta">
+                                <div><strong>Qty:</strong> ${item.quantity}</div>
+                                <div><strong>Final Date:</strong> ${this.formatDate(item.expiryDate)}</div>
+                                <div><strong>Processed:</strong> ${this.formatDate(item.processedDate)}</div>
+                            </div>
+                        </div>
+                        <div class="processed-item-fields">
+                            <div class="processed-field">
+                                <label>Status</label>
+                                <select class="processed-status" data-id="${item.id}">
+                                    <option value="">Select status...</option>
+                                    <option value="Taken off shelf" ${item.status === 'Taken off shelf' ? 'selected' : ''}>Taken off shelf</option>
+                                    <option value="Marked down" ${item.status === 'Marked down' ? 'selected' : ''}>Marked down</option>
+                                    <option value="Disposed" ${item.status === 'Disposed' ? 'selected' : ''}>Disposed</option>
+                                    <option value="Donated" ${item.status === 'Donated' ? 'selected' : ''}>Donated</option>
+                                    <option value="Other" ${item.status === 'Other' ? 'selected' : ''}>Other</option>
+                                </select>
+                            </div>
+                            <div class="processed-field">
+                                <label>Notes</label>
+                                <textarea class="processed-notes" data-id="${item.id}" placeholder="Add notes...">${item.notes || ''}</textarea>
+                            </div>
+                            <button class="restore-btn" data-id="${item.id}" style="background-color: #e8e8e8; color: #333; padding: 0.75rem; border: none; border-radius: 8px; font-weight: 600; cursor: pointer; width: 100%; font-size: 0.9rem; transition: all 0.3s ease;" aria-label="Restore to inventory">↩️ Restore to Inventory</button>
+                        </div>
+                    `;
+                    container.appendChild(itemDiv);
+                });
+
+                this.attachProcessedItemListeners();
+            },
+
+            attachCheckboxListeners() {
+                document.querySelectorAll('.remove-checkbox').forEach(checkbox => {
+                    checkbox.addEventListener('change', (e) => {
+                        const id = parseInt(e.target.dataset.id);
+                        const dateToProcess = e.target.dataset.date;
+                        const product = this.products.find(p => p.id === id);
+                        
+                        if (e.target.checked && product) {
+                            if (product.dates.length === 1) {
+                                // Single date: move entire product to processed items
+                                const processedItem = {
+                                    id: product.id,
+                                    name: product.name,
+                                    quantity: product.quantity,
+                                    expiryDate: dateToProcess,
+                                    processedDate: new Date().toISOString().split('T')[0],
+                                    status: '',
+                                    notes: ''
+                                };
+                                this.processedItems.push(processedItem);
+                                product.removed = true;
+                            } else {
+                                // Multiple dates: remove only this date
+                                product.dates = product.dates.filter(d => d !== dateToProcess);
+                            }
+                            this.saveProducts();
+                            this.saveProcessedItems();
+                            this.updateStats();
+                            this.render();
+                        }
+                    });
+                });
+            },
+
+            attachEditButtonListeners() {
+                document.querySelectorAll('.edit-btn').forEach(btn => {
+                    btn.addEventListener('click', (e) => {
+                        e.preventDefault();
+                        const id = parseInt(btn.dataset.id);
+                        this.openEditModal(id);
+                    });
+                });
+            },
+
+            attachProcessedItemListeners() {
+                document.querySelectorAll('.processed-status').forEach(select => {
+                    select.addEventListener('change', (e) => {
+                        const id = parseInt(e.target.dataset.id);
+                        const item = this.processedItems.find(pi => pi.id === id);
+                        if (item) {
+                            item.status = e.target.value;
+                            this.saveProcessedItems();
+                        }
+                    });
+                });
+
+                document.querySelectorAll('.processed-notes').forEach(textarea => {
+                    textarea.addEventListener('input', (e) => {
+                        const id = parseInt(e.target.dataset.id);
+                        const item = this.processedItems.find(pi => pi.id === id);
+                        if (item) {
+                            item.notes = e.target.value;
+                            this.saveProcessedItems();
+                        }
+                    });
+                });
+
+                document.querySelectorAll('.restore-btn').forEach(btn => {
+                    btn.addEventListener('click', (e) => {
+                        e.preventDefault();
+                        const id = parseInt(btn.dataset.id);
+                        const processedItem = this.processedItems.find(pi => pi.id === id);
+                        
+                        if (processedItem) {
+                            // Find the original product
+                            const product = this.products.find(p => p.id === id);
+                            if (product) {
+                                // Re-activate the product
+                                product.removed = false;
+                                // Add back the processed date
+                                if (!product.dates.includes(processedItem.expiryDate)) {
+                                    product.dates.push(processedItem.expiryDate);
+                                    product.dates.sort();
+                                }
+                            }
+                            // Remove from processed items
+                            this.processedItems = this.processedItems.filter(pi => pi.id !== id);
+                            this.saveProducts();
+                            this.saveProcessedItems();
+                            this.updateStats();
+                            this.render();
+                        }
+                    });
+                });
+            },
+
+            openEditModal(productId) {
+                const product = this.products.find(p => p.id === productId);
+                if (!product) return;
+
+                this.editingProductId = productId;
+                this.editTempDates = [...product.dates];
+
+                document.getElementById('editProductName').value = product.name;
+                document.getElementById('editProductQuantity').value = product.quantity;
+
+                this.renderEditDatesList();
+                document.getElementById('editModal').classList.add('active');
+            },
+
+            renderEditDatesList() {
+                const container = document.getElementById('editDatesList');
+                container.innerHTML = '';
+
+                this.editTempDates.forEach((date, index) => {
+                    const dateDiv = document.createElement('div');
+                    dateDiv.className = 'date-item';
+                    dateDiv.innerHTML = `
+                        <input 
+                            type="date" 
+                            class="edit-date-input"
+                            value="${date}"
+                            data-index="${index}"
+                            style="flex: 1; padding: 0.5rem 0.75rem; border: 1px solid #e0e0e0; border-radius: 8px; font-size: 0.95rem; font-family: inherit;"
+                        >
+                        <button type="button" class="remove-date-btn" data-index="${index}">✕</button>
+                    `;
+                    container.appendChild(dateDiv);
+                });
+
+                // Attach listeners to date inputs
+                document.querySelectorAll('#editDatesList .edit-date-input').forEach(input => {
+                    input.addEventListener('change', (e) => {
+                        const index = parseInt(e.target.dataset.index);
+                        if (e.target.value) {
+                            this.editTempDates[index] = e.target.value;
+                            this.editTempDates.sort();
+                            this.renderEditDatesList();
+                        } else {
+                            // If emptied, remove it
+                            this.editTempDates.splice(index, 1);
+                            this.renderEditDatesList();
+                        }
+                    });
+                });
+
+                document.querySelectorAll('#editDatesList .remove-date-btn').forEach(btn => {
+                    btn.addEventListener('click', (e) => {
+                        e.preventDefault();
+                        const index = parseInt(btn.dataset.index);
+                        this.editTempDates.splice(index, 1);
+                        this.renderEditDatesList();
+                    });
+                });
+            },
+
+            updateStats() {
+                const total = this.products.filter(p => !p.removed).length;
+                const expiring = this.products.filter(p => {
+                    if (p.removed) return false;
+                    const daysUntil = this.getDaysUntilExpiry(this.getEarliestDate(p.dates));
+                    return this.isExpiringCritical(daysUntil);
+                }).length;
+                const processed = this.processedItems.length;
+
+                document.getElementById('totalCount').textContent = total;
+                document.getElementById('expiringCount').textContent = expiring;
+                document.getElementById('processedCount').textContent = processed;
+            },
+
+            attachEventListeners() {
+                // Tab switching
+                document.getElementById('expiringTab').addEventListener('click', () => {
+                    this.currentView = 'expiring';
+                    this.searchQuery = '';
+                    document.getElementById('searchInput').value = '';
+                    this.updateTabButtons();
+                    this.render();
+                });
+
+                document.getElementById('allTab').addEventListener('click', () => {
+                    this.currentView = 'all';
+                    this.searchQuery = '';
+                    document.getElementById('searchInput').value = '';
+                    this.updateTabButtons();
+                    this.render();
+                });
+
+                document.getElementById('processedTab').addEventListener('click', () => {
+                    this.currentView = 'processed';
+                    this.searchQuery = '';
+                    document.getElementById('searchInput').value = '';
+                    this.updateTabButtons();
+                    this.render();
+                });
+
+                // Search
+                document.getElementById('searchInput').addEventListener('input', (e) => {
+                    this.searchQuery = e.target.value;
+                    this.render();
+                });
+
+                // Add product modal
+                const addModal = document.getElementById('addModal');
+                const addBtn = document.getElementById('addBtn');
+                const addCancelBtn = document.getElementById('cancelBtn');
+                const addForm = document.getElementById('addForm');
+
+                addBtn.addEventListener('click', () => {
+                    this.tempDates = [];
+                    document.getElementById('datesList').innerHTML = '';
+                    addForm.reset();
+                    addModal.classList.add('active');
+                });
+
+                addCancelBtn.addEventListener('click', () => {
+                    addModal.classList.remove('active');
+                    addForm.reset();
+                    this.tempDates = [];
+                });
+
+                addModal.addEventListener('click', (e) => {
+                    if (e.target === addModal) {
+                        addModal.classList.remove('active');
+                        addForm.reset();
+                        this.tempDates = [];
+                    }
+                });
+
+                document.getElementById('addDateBtn').addEventListener('click', (e) => {
+                    e.preventDefault();
+                    // Add empty date and auto-focus to open picker
+                    this.tempDates.push('');
+                    this.renderDatesList();
+                    // Auto-focus and open the picker on the new input
+                    setTimeout(() => {
+                        const inputs = document.querySelectorAll('#datesList .add-date-input');
+                        if (inputs.length > 0) {
+                            inputs[inputs.length - 1].click();
+                        }
+                    }, 0);
+                });
+
+                addForm.addEventListener('submit', (e) => {
+                    e.preventDefault();
+                    const name = document.getElementById('productName').value.trim();
+                    const quantity = document.getElementById('productQuantity').value.trim();
+
+                    if (name && quantity && this.tempDates.length > 0) {
+                        const newProduct = {
+                            id: Math.max(...this.products.map(p => p.id), 0) + 1,
+                            name,
+                            quantity,
+                            dates: [...this.tempDates],
+                            removed: false
+                        };
+
+                        this.products.push(newProduct);
+                        this.sortProductsAlphabetically();
+                        this.saveProducts();
+                        this.updateStats();
+                        this.render();
+                        addModal.classList.remove('active');
+                        addForm.reset();
+                        this.tempDates = [];
+                    }
+                });
+
+                // Edit product modal
+                const editModal = document.getElementById('editModal');
+                const editCancelBtn = document.getElementById('editCancelBtn');
+                const editDeleteBtn = document.getElementById('editDeleteBtn');
+                const editForm = document.getElementById('editForm');
+
+                editCancelBtn.addEventListener('click', () => {
+                    editModal.classList.remove('active');
+                    this.editingProductId = null;
+                    this.editTempDates = [];
+                });
+
+                editDeleteBtn.addEventListener('click', () => {
+                    const product = this.products.find(p => p.id === this.editingProductId);
+                    const confirmMessage = product ? `Delete "${product.name}"? This cannot be undone.` : 'Delete this product? This cannot be undone.';
+                    if (confirm(confirmMessage)) {
+                        this.products = this.products.filter(p => p.id !== this.editingProductId);
+                        this.saveProducts();
+                        this.updateStats();
+                        this.render();
+                        editModal.classList.remove('active');
+                        this.editingProductId = null;
+                        this.editTempDates = [];
+                    }
+                });
+
+                editModal.addEventListener('click', (e) => {
+                    if (e.target === editModal) {
+                        editModal.classList.remove('active');
+                        this.editingProductId = null;
+                        this.editTempDates = [];
+                    }
+                });
+
+                document.getElementById('editAddDateBtn').addEventListener('click', (e) => {
+                    e.preventDefault();
+                    // Add empty date and auto-focus to open picker
+                    this.editTempDates.push('');
+                    this.renderEditDatesList();
+                    // Auto-focus and open the picker on the new input
+                    setTimeout(() => {
+                        const inputs = document.querySelectorAll('#editDatesList .edit-date-input');
+                        if (inputs.length > 0) {
+                            inputs[inputs.length - 1].click();
+                        }
+                    }, 0);
+                });
+
+                editForm.addEventListener('submit', (e) => {
+                    e.preventDefault();
+                    const name = document.getElementById('editProductName').value.trim();
+                    const quantity = document.getElementById('editProductQuantity').value.trim();
+
+                    // Validation
+                    if (!name) {
+                        alert('Please enter a product name');
+                        return;
+                    }
+                    if (!quantity) {
+                        alert('Please enter a quantity');
+                        return;
+                    }
+                    if (this.editTempDates.length === 0) {
+                        alert('Please add at least one expiry date');
+                        return;
+                    }
+
+                    // Save the product
+                    const product = this.products.find(p => p.id === this.editingProductId);
+                    if (product) {
+                        product.name = name;
+                        product.quantity = quantity;
+                        product.dates = [...this.editTempDates];
+                        this.sortProductsAlphabetically();
+                        this.saveProducts();
+                        this.updateStats();
+                        this.render();
+                    }
+
+                    // Close the modal
+                    editModal.classList.remove('active');
+                    this.editingProductId = null;
+                    this.editTempDates = [];
+                });
+            },
+
+            renderDatesList() {
+                const container = document.getElementById('datesList');
+                container.innerHTML = '';
+
+                this.tempDates.forEach((date, index) => {
+                    const dateDiv = document.createElement('div');
+                    dateDiv.className = 'date-item';
+                    dateDiv.innerHTML = `
+                        <input 
+                            type="date" 
+                            class="add-date-input"
+                            value="${date}"
+                            data-index="${index}"
+                            style="flex: 1; padding: 0.5rem 0.75rem; border: 1px solid #e0e0e0; border-radius: 8px; font-size: 0.95rem; font-family: inherit;"
+                        >
+                        <button type="button" class="remove-date-btn" data-index="${index}">✕</button>
+                    `;
+                    container.appendChild(dateDiv);
+                });
+
+                // Attach listeners to date inputs
+                document.querySelectorAll('#datesList .add-date-input').forEach(input => {
+                    input.addEventListener('change', (e) => {
+                        const index = parseInt(e.target.dataset.index);
+                        if (e.target.value) {
+                            this.tempDates[index] = e.target.value;
+                            this.tempDates.sort();
+                            this.renderDatesList();
+                        } else {
+                            // If emptied, remove it
+                            this.tempDates.splice(index, 1);
+                            this.renderDatesList();
+                        }
+                    });
+                });
+
+                document.querySelectorAll('#datesList .remove-date-btn').forEach(btn => {
+                    btn.addEventListener('click', (e) => {
+                        e.preventDefault();
+                        const index = parseInt(btn.dataset.index);
+                        this.tempDates.splice(index, 1);
+                        this.renderDatesList();
+                    });
+                });
+            },
+
+            updateTabButtons() {
+                const expiringTab = document.getElementById('expiringTab');
+                const allTab = document.getElementById('allTab');
+                const processedTab = document.getElementById('processedTab');
+
+                expiringTab.classList.toggle('inactive', this.currentView !== 'expiring');
+                allTab.classList.toggle('inactive', this.currentView !== 'all');
+                processedTab.classList.toggle('inactive', this.currentView !== 'processed');
+            }
+        };
+
+        // Start app when DOM is ready
+        document.addEventListener('DOMContentLoaded', () => {
+            app.init();
+        });
+    </script>
+</body>
+</html>
