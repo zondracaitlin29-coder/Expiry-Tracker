@@ -3,7 +3,7 @@
 // Product data itself lives in localStorage, which persists independently
 // of this cache and is not affected by updates here.
 
-const CACHE_NAME = 'expiry-tracker-cache-v1';
+const CACHE_NAME = 'bb-tracker';
 const APP_SHELL = [
   './',
   './index.html',
