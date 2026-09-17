@@ -28,21 +28,21 @@
 
 
         :root {
-            --cream: #EFEEEA;
-            --cream-soft: #F7F7F5;
-            --terra: #E39138;
-            --terra-dark: #C97F1E;
-            --olive: #6B8F76;
-            --olive-dark: #3F6349;
-            --olive-soft: #DCE7DE;
+            --cream: #EFF1F4;
+            --cream-soft: #F8F9FB;
+            --terra: #59ACFC;
+            --terra-dark: #2563EB;
+            --olive: #59ACFC;
+            --olive-dark: #2563EB;
+            --olive-soft: #DCEAFB;
             --charcoal: #26313D;
             --navy: #223447;
             --navy-deep: #121C26;
             --ink-70: #454A4E;
             --ink-40: #8B8F91;
-            --rust: #B23A2E;
-            --rust-soft: #F1D9D3;
-            --border: #DCDCD5;
+            --rust: #C94F3F;
+            --rust-soft: #F7DBD5;
+            --border: #D8DEE5;
         }
 
         * {
@@ -273,37 +273,18 @@
             transition: all 0.3s ease;
         }
 
-        /* Single-date products that are within the critical window get the
-           whole card turned red, not just an inner row */
+        /* In Expiring Soon, every card is red since everything shown there
+           is already critical. In All Products, only single-date products
+           within the critical window get this treatment. */
         .product-item.product-item-critical {
-            background-color: var(--rust);
+            background-color: var(--rust-soft);
             border-color: var(--rust);
-        }
-
-        .product-item.product-item-critical .product-name,
-        .product-item.product-item-critical .product-quantity,
-        .product-item.product-item-critical .batch-date,
-        .product-item.product-item-critical .batch-qty {
-            color: #fff;
-        }
-
-        .product-item.product-item-critical .batch-qty.qty-unknown {
-            color: rgba(255, 255, 255, 0.75);
-        }
-
-        .product-item.product-item-critical .edit-btn {
-            color: #fff;
         }
 
         .product-item.product-item-critical .batch-row:not(.batch-row-pending) {
             background-color: transparent;
             border: none;
             padding: 0;
-        }
-
-        .product-item.product-item-critical .days-critical {
-            background-color: #fff;
-            color: var(--rust);
         }
 
         .product-item.product-item-critical input[type="checkbox"] {
@@ -410,9 +391,9 @@
 
         .days-pill {
             display: inline-block;
-            padding: 0.3rem 0.65rem;
+            padding: 0.38rem 0.8rem;
             border-radius: 999px;
-            font-size: 0.78rem;
+            font-size: 0.9rem;
             font-weight: 700;
             white-space: nowrap;
             letter-spacing: 0.01em;
@@ -425,7 +406,7 @@
         }
 
         .days-normal {
-            background-color: rgba(232, 149, 106, 0.18);
+            background-color: rgba(37, 99, 235, 0.15);
             color: var(--terra-dark);
         }
 
@@ -1336,14 +1317,17 @@
 
                         if (visibleDates.length === 0) return;
 
-                        // A product with only one date total, and that date is
-                        // critical, gets the whole card turned red — not just
-                        // an inner row. A product with multiple dates always
-                        // stays a white card with per-row indicators instead,
-                        // even if the one showing here happens to be critical.
+                        // In Expiring Soon, only critical dates are ever shown
+                        // at all, so the whole card goes red regardless of how
+                        // many dates the product has in total — the other
+                        // dates aren't part of what's being looked at here.
+                        // In All Products, a product with multiple dates stays
+                        // a white card with per-row indicators instead, since
+                        // not everything shown there is necessarily urgent.
                         const isSingleDateProduct = product.dates.length === 1;
-                        const isFullyCritical = isSingleDateProduct &&
-                            this.isExpiringCritical(this.getDaysUntilExpiry(product.dates[0].date));
+                        const isFullyCritical = this.currentView === 'expiring'
+                            ? true
+                            : (isSingleDateProduct && this.isExpiringCritical(this.getDaysUntilExpiry(product.dates[0].date)));
 
                         const li = document.createElement('li');
                         li.className = `product-item ${isFullyCritical ? 'product-item-critical' : ''}`;
@@ -1369,12 +1353,12 @@
 
                             return `
                                 <div class="batch-row ${isCritical && !isFullyCritical ? 'batch-critical' : ''}">
-                                    ${checkboxHTML}
                                     <div class="batch-info">
                                         <div class="batch-date">${this.formatDate(entry.date)}</div>
                                         <div class="batch-qty ${hasQty ? '' : 'qty-unknown'}">${qtyText}</div>
                                     </div>
                                     <span class="days-pill ${daysClass}">${daysText}</span>
+                                    ${checkboxHTML}
                                 </div>
                             `;
                         }).join('');
@@ -1686,7 +1670,7 @@
                                 class="edit-date-input"
                                 value="${entry.date}"
                                 data-index="${index}"
-                                style="flex: 1; padding: 0.5rem 0.75rem; border: 1px solid #DCDCD5; border-radius: 8px; font-size: 0.95rem; font-family: inherit;"
+                                style="flex: 1; padding: 0.5rem 0.75rem; border: 1px solid #D8DEE5; border-radius: 8px; font-size: 0.95rem; font-family: inherit;"
                             >
                             <button type="button" class="remove-date-btn" data-index="${index}">✕</button>
                         </div>
@@ -1950,7 +1934,7 @@
                                 class="add-date-input"
                                 value="${entry.date}"
                                 data-index="${index}"
-                                style="flex: 1; padding: 0.5rem 0.75rem; border: 1px solid #DCDCD5; border-radius: 8px; font-size: 0.95rem; font-family: inherit;"
+                                style="flex: 1; padding: 0.5rem 0.75rem; border: 1px solid #D8DEE5; border-radius: 8px; font-size: 0.95rem; font-family: inherit;"
                             >
                             <button type="button" class="remove-date-btn" data-index="${index}">✕</button>
                         </div>
